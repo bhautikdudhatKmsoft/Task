@@ -8,22 +8,10 @@ const port = process.env.PORT || 7410;
 
 const app = express();
 
-// Set up file storage using Multer (temporary file storage)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Create unique filenames
-  },
-});
+// Set up file storage using Multer (store file in memory)
+const storage = multer.memoryStorage();
 
 const upload = multer({ storage: storage });
-
-// Ensure the 'uploads' folder exists
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
-}
 
 // Set up Nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -50,7 +38,8 @@ app.post('/upload', upload.single('file'), (req, res) => {
     text: 'A file has been uploaded.',
     attachments: [
       {
-        path: file.path,
+        filename: file.originalname, // Maintain original filename
+        content: file.buffer, // Send file content directly from memory
       },
     ],
   };
@@ -60,8 +49,6 @@ app.post('/upload', upload.single('file'), (req, res) => {
       console.error(err);
       return res.status(500).send('Failed to send email');
     }
-
-    fs.unlinkSync(file.path); 
 
     return res.status(200).send('File uploaded and email sent successfully');
   });
